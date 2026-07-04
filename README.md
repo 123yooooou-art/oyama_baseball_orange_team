@@ -1,0 +1,2 @@
+# oyama_baseball_orange_team
+2026年の小山少年野球団の集計システムのリポジトリ
