@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>オレンジライン 懇親会 注文</title>
+<title>オレンジライン 注文・会計</title>
 <style>
   :root{
     --ink:#1a2238;--orange:#f06a1e;--orange-soft:#ffe9dc;--line:#e3e6ee;
@@ -83,7 +83,7 @@
 </head>
 <body>
 <header>
-  <h1>🍱 懇親会 注文</h1>
+  <h1>🍱 注文・会計</h1>
   <p>子どもの名前で注文をまとめて登録（公開）</p>
 </header>
 
@@ -287,6 +287,8 @@ async function init(){
     ADULT_MENUS=MENU_ITEMS.filter(m=>m.seg==="大人");
     PRICE={};MENU_ITEMS.forEach(m=>{PRICE[m.name]=m.price;});
     document.getElementById("evBadge").textContent=EVENT?("🎉 "+EVENT):"（イベント未設定）";
+    // イベント名（config「現在のイベント名」）をブラウザのタブタイトルにも反映＝忘年会等に使い回せる
+    document.title=EVENT?("オレンジライン "+EVENT):"オレンジライン 注文・会計";
     const pu=Number(d.present)||0;
     const pn=document.getElementById("presentNote");
     if(pu>0){pn.style.display="block";pn.textContent="🎁 この会は子ども1人あたり お菓子代 "+pu.toLocaleString()+"円 がかかります（メニュー代とは別に加算されます）。";}
