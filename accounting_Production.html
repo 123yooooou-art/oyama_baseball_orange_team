@@ -54,6 +54,18 @@
   th:first-child,td:first-child{text-align:left;font-weight:700;}
   td.amt{font-weight:800;color:var(--orange);}
   tfoot td{font-weight:800;border-top:2px solid var(--ink);border-bottom:none;}
+  /* ===== 注文集計（発注用）：お店プルダウン＋発注レ点 ===== */
+  .kmenu-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .kmenu-bar label{font-size:.78rem;color:var(--muted);font-weight:700;}
+  .kmenu-bar select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:.86rem;background:#fff;font-weight:700;}
+  .kmenu-prog{font-size:.78rem;color:var(--muted);margin-left:auto;}
+  .kmenu-prog b{color:var(--green);font-size:.95rem;}
+  .kmenu-reset{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.72rem;color:var(--muted);cursor:pointer;}
+  .chk{width:22px;height:22px;accent-color:var(--green);cursor:pointer;vertical-align:middle;}
+  tr.ordered td{color:#9aa3b2;}
+  tr.ordered td.amt{color:#9aa3b2;}
+  tr.ordered .mname{text-decoration:line-through;}
+  .shop-tag{display:inline-block;font-size:.64rem;font-weight:700;color:#7a5c00;background:#fff3d6;border-radius:999px;padding:1px 8px;vertical-align:middle;}
   .cur-order{background:#eef6ff;border:1px solid #cfe3fb;border-radius:10px;padding:11px 13px;font-size:.84rem;margin-bottom:14px;}
   .cur-order .co-title{font-weight:800;color:#2a6db5;margin-bottom:4px;}
   .cur-order .co-edit{margin-top:9px;display:inline-block;background:#fff;border:2px solid var(--orange);color:var(--orange);
@@ -156,8 +168,19 @@
 /* ===== 設定：GASのウェブアプリURLを貼る（既存システムと同じGAS） ===== */
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwuFKWO06Awsft9SuP_Oj5Jc6gssisUxGFpinvAGE6BYVJKavIyKC4eD4vmX10w7sSW/exec";
 
+/* ===== 発注先のお店分け（会計タブ「注文集計」のプルダウン用） =====
+   基本は【スプレッドシートのmenuシートE列「お店」】に入力した値を使う（GAS第6段階が返してくれる）。
+   → イベントが変わっても、menuシートにお店を書くだけでOK（HTMLの修正不要）。
+   E列が未入力のメニューだけ、下のキーワードで補助判定する（それでも不明なら「その他」に出る）。
+   （ー と － などの長音の表記ゆれは自動で吸収して照合する） */
+const SHOP_DEFS=[
+  { shop:"マック",       keywords:["マック","ハンバーガー"] },
+  { shop:"ほっともっと", keywords:["ドラえもん","ドラミちゃん","スポーツ弁当","もちミニ"] }
+];
+
 let CHILDREN=[], STAFF=[], EVENT="", MENU_ITEMS=[], CHILD_MENUS=[], ADULT_MENUS=[], PRICE={};
 let ORDERS_BY_NAME={};
+let KMENU=[], KEVENT="", shopFilter="全部";   // 注文集計の状態（お店絞り込み）
 
 const childSel=document.getElementById("child");
 const childCountSel=document.getElementById("childCount");
@@ -349,6 +372,76 @@ function loadOrderIntoForm(f){
   document.getElementById("childCount").scrollIntoView({behavior:"smooth",block:"center"});
 }
 
+/* ===== 注文集計（発注用）：お店プルダウン＋発注レ点チェック ===== */
+/* 長音の表記ゆれ（ー/－/‐/−/ｰ）をそろえてから照合する */
+function normShop(s){return String(s||"").replace(/[－‐−ｰ]/g,"ー");}
+/* お店の判定：①menuシートE列「お店」（GASがshopとして返す）を最優先
+   ②未入力ならSHOP_DEFSのキーワードで補助判定 ③それでも不明なら「その他」 */
+function shopOfItem(m){
+  const fromSheet=String((m&&m.shop)||"").trim();
+  if(fromSheet)return fromSheet;
+  const n=normShop(m&&m.menu);
+  for(const d of SHOP_DEFS){
+    for(const k of d.keywords){if(n.indexOf(normShop(k))>=0)return d.shop;}
+  }
+  return "その他";
+}
+/* 発注済みレ点は「この端末のブラウザ」にイベント名ごとに保存（発注担当者用） */
+function checkedKey(){return "orderChecked|"+KEVENT;}
+function loadChecked(){try{return JSON.parse(localStorage.getItem(checkedKey())||"{}");}catch(e){return {};}}
+function saveChecked(o){try{localStorage.setItem(checkedKey(),JSON.stringify(o));}catch(e){}}
+
+function renderMenuList(){
+  const box=document.getElementById("kMenu");
+  if(!KMENU.length){box.innerHTML='<div class="loading">まだ注文がありません。</div>';return;}
+  const checked=loadChecked();
+  /* お店ごとの品数（プルダウン。データに出てきた順＋その他は最後） */
+  const shopCount={};const shopList=[];
+  KMENU.forEach(m=>{
+    const s=shopOfItem(m);
+    shopCount[s]=(shopCount[s]||0)+1;
+    if(s!=="その他"&&shopList.indexOf(s)<0)shopList.push(s);
+  });
+  if(shopCount["その他"])shopList.push("その他");
+  if(shopFilter!=="全部"&&shopList.indexOf(shopFilter)<0)shopFilter="全部";
+  const rows=(shopFilter==="全部")?KMENU:KMENU.filter(m=>shopOfItem(m)===shopFilter);
+  const done=rows.filter(m=>checked[m.menu]).length;
+
+  let h='<div class="kmenu-bar">'
+    +'<label>お店</label>'
+    +'<select id="kShopSel">'
+    +'<option value="全部"'+(shopFilter==="全部"?" selected":"")+'>全部（'+KMENU.length+'品）</option>'
+    +shopList.map(s=>'<option value="'+escAttr(s)+'"'+(shopFilter===s?" selected":"")+'>'+esc(s)+'（'+shopCount[s]+'品）</option>').join("")
+    +'</select>'
+    +'<span class="kmenu-prog">発注済み <b>'+done+'</b> / '+rows.length+' 品</span>'
+    +'<button class="kmenu-reset" id="kChkReset">リセット</button>'
+    +'</div>';
+  h+='<table><thead><tr><th>済</th><th>メニュー</th><th>個数</th><th>単価</th><th>金額</th></tr></thead><tbody>';
+  let tc=0,ta=0;
+  rows.forEach(m=>{
+    tc+=m.count;ta+=m.amount;
+    const on=!!checked[m.menu];
+    h+='<tr'+(on?' class="ordered"':'')+'>'
+      +'<td><input type="checkbox" class="chk" data-menu="'+escAttr(m.menu)+'"'+(on?' checked':'')+'></td>'
+      +'<td class="mname">'+esc(m.menu)+(shopFilter==="全部"?' <span class="shop-tag">'+esc(shopOfItem(m))+'</span>':'')+'</td>'
+      +'<td>'+m.count+'</td><td>'+(m.price||0).toLocaleString()+'</td><td class="amt">'+(m.amount||0).toLocaleString()+'</td></tr>';
+  });
+  h+='</tbody><tfoot><tr><td></td><td>'+(shopFilter==="全部"?"合計":esc(shopFilter)+"の合計")+'</td><td>'+tc+'</td><td></td><td class="amt">'+ta.toLocaleString()+'</td></tr></tfoot></table>';
+  h+='<p class="note" style="margin-top:6px">レ点＝発注済みの印（この端末のブラウザに保存されます）。お店で絞り込んで上から順に発注すると、もれ・かぶりを防げます。</p>';
+  box.innerHTML=h;
+  /* 操作の紐づけ */
+  document.getElementById("kShopSel").onchange=e=>{shopFilter=e.target.value;renderMenuList();};
+  box.querySelectorAll(".chk").forEach(c=>{c.onchange=()=>{
+    const o=loadChecked();const key=c.getAttribute("data-menu");
+    if(c.checked)o[key]=true;else delete o[key];
+    saveChecked(o);renderMenuList();
+  };});
+  document.getElementById("kChkReset").onclick=()=>{
+    if(!confirm("発注済みのレ点を全部消します。よろしいですか？"))return;
+    saveChecked({});renderMenuList();
+  };
+}
+
 /* 会計タブの描画 */
 function renderKaikei(k){
   document.getElementById("kEvent").textContent=(k.event?k.event+"　":"")+"会計サマリー";
@@ -363,15 +456,10 @@ function renderKaikei(k){
     +((k.presentUnit||0)>0?'<div class="note" style="margin-top:8px">内訳：メニュー代 '+(s.menu||0).toLocaleString()+'円 ＋ 🎁お菓子代 '+(s.present||0).toLocaleString()+'円（'+(k.presentUnit).toLocaleString()+'円×子ども'+(s.child||0)+'人）</div>':'')
     +((s.unpaidNames&&s.unpaidNames.length)?'<div class="unpaid-box">未払い：'+s.unpaidNames.map(esc).join("、")+'</div>':'');
 
-  // 注文集計（発注用）
-  const menu=k.menu||[];
-  if(menu.length){
-    let h='<table><thead><tr><th>メニュー</th><th>個数</th><th>単価</th><th>金額</th></tr></thead><tbody>';
-    let tc=0,ta=0;
-    menu.forEach(m=>{tc+=m.count;ta+=m.amount;h+='<tr><td>'+esc(m.menu)+'</td><td>'+m.count+'</td><td>'+(m.price||0).toLocaleString()+'</td><td class="amt">'+(m.amount||0).toLocaleString()+'</td></tr>';});
-    h+='</tbody><tfoot><tr><td>合計</td><td>'+tc+'</td><td></td><td class="amt">'+ta.toLocaleString()+'</td></tr></tfoot></table>';
-    document.getElementById("kMenu").innerHTML=h;
-  }else{document.getElementById("kMenu").innerHTML='<div class="loading">まだ注文がありません。</div>';}
+  // 注文集計（発注用）：お店プルダウン＋発注レ点（renderMenuListで描画）
+  KMENU=k.menu||[];
+  KEVENT=k.event||"";
+  renderMenuList();
 
   // 家庭別 会計一覧（カード型）
   const fam=k.families||[];
