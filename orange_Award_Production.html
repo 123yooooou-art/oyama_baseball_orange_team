@@ -200,6 +200,7 @@
         <div class="field"><label for="tokuten">得点</label><input id="tokuten" type="number" inputmode="numeric" value="0" min="0"></div>
         <div class="field"><label for="shutsurui">出塁</label><input id="shutsurui" type="number" inputmode="numeric" value="0" min="0"></div>
         <div class="field"><label for="daida">代打</label><input id="daida" type="number" inputmode="numeric" value="0" min="0"></div>
+        <div class="field"><label for="tourui">盗塁</label><input id="tourui" type="number" inputmode="numeric" value="0" min="0"></div>
       </div>
 
       <div class="field">
@@ -402,6 +403,43 @@ const STAMPS = {
       {name:"初出塁", emoji:"👟", n:1},
       {name:"チャンスメーカー", emoji:"🚀", n:10},
       {name:"塁の主", emoji:"🏰", n:20}
+    ]},
+  /* ===== ver016：追加スタンプ（打点・盗塁・代打・得点・打席） ===== */
+  rbi: { label:"打点スタンプ（通算打点）", metric:"daten", unit:"点",
+    grad:"linear-gradient(135deg,#fc6076,#ff9a44)",
+    tiers:[
+      {name:"初打点", emoji:"💥", n:1},
+      {name:"ポイントゲッター", emoji:"🎯", n:5},
+      {name:"打点マシン", emoji:"💣", n:10}
+    ]},
+  steal: { label:"盗塁スタンプ（通算盗塁）", metric:"tourui", unit:"個",
+    grad:"linear-gradient(135deg,#36d1dc,#5b86e5)",
+    tiers:[
+      {name:"初盗塁", emoji:"💨", n:1},
+      {name:"スピードスター", emoji:"⚡", n:5},
+      {name:"韋駄天", emoji:"🌪️", n:10}
+    ]},
+  pinch: { label:"代打スタンプ（通算代打）", metric:"daida", unit:"回",
+    grad:"linear-gradient(135deg,#ee0979,#ff6a00)",
+    tiers:[
+      {name:"初代打", emoji:"🦸", n:1},
+      {name:"たのめる代打", emoji:"🤜", n:3},
+      {name:"代打の切り札", emoji:"🃏", n:5}
+    ]},
+  run: { label:"得点スタンプ（通算得点）", metric:"tokuten", unit:"点",
+    grad:"linear-gradient(135deg,#f7971e,#ffd200)",
+    tiers:[
+      {name:"初得点", emoji:"🏃", n:1},
+      {name:"ホームの常連", emoji:"🏠", n:5},
+      {name:"得点王への道", emoji:"🥇", n:10}
+    ]},
+  atbat: { label:"打席スタンプ（通算打席）", metric:"daseki", unit:"打席",
+    grad:"linear-gradient(135deg,#a18cd1,#fbc2eb)",
+    tiers:[
+      {name:"デビュー", emoji:"🌱", n:1},
+      {name:"経験を積んだ", emoji:"🌿", n:10},
+      {name:"打席のベテラン", emoji:"🌳", n:20},
+      {name:"レジェンド", emoji:"🏆", n:30}
     ]}
 };
 
@@ -472,6 +510,7 @@ document.getElementById("submit").onclick=async()=>{
     tokuten:+document.getElementById("tokuten").value,
     shutsurui:+document.getElementById("shutsurui").value,
     daida:+document.getElementById("daida").value,
+    tourui:+document.getElementById("tourui").value,   // ver016：盗塁
     positions:Array.from(selPositions).join("・"),
     start:selStart,
     play:selPlay
@@ -482,7 +521,7 @@ document.getElementById("submit").onclick=async()=>{
     clearMem();
     toast(editingTeeballTs?"成績を修正しました ✓":"記録しました ✓");
     // 入力欄リセット
-    ["daseki","anda","daten","tokuten","shutsurui","daida"].forEach(id=>document.getElementById(id).value=0);
+    ["daseki","anda","daten","tokuten","shutsurui","daida","tourui"].forEach(id=>document.getElementById(id).value=0);
     selPositions.clear();document.querySelectorAll("#posChips .chip").forEach(c=>c.classList.remove("on"));
     document.querySelectorAll("#segPlay .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selPlay="";
     cancelTeeballEdit();
@@ -497,7 +536,7 @@ function cancelTeeballEdit(){
   document.getElementById("submit").textContent="＋ この選手の成績を記録";
 }
 document.getElementById("tbEditCancel").onclick=()=>{
-  ["daseki","anda","daten","tokuten","shutsurui","daida"].forEach(id=>document.getElementById(id).value=0);
+  ["daseki","anda","daten","tokuten","shutsurui","daida","tourui"].forEach(id=>document.getElementById(id).value=0);
   selPositions.clear();document.querySelectorAll("#posChips .chip").forEach(c=>c.classList.remove("on"));
   document.querySelectorAll("#segStart .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selStart="スタメン";
   document.querySelectorAll("#segPlay .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selPlay="";
@@ -512,6 +551,7 @@ function editTeeball(ts){
   document.getElementById("daseki").value=r.daseki||0;document.getElementById("anda").value=r.anda||0;
   document.getElementById("daten").value=r.daten||0;document.getElementById("tokuten").value=r.tokuten||0;
   document.getElementById("shutsurui").value=r.shutsurui||0;document.getElementById("daida").value=r.daida||0;
+  document.getElementById("tourui").value=r.tourui||0;   // ver016：盗塁
   selPositions.clear();
   const ps=String(r.positions||"").split("・").filter(x=>x);
   document.querySelectorAll("#posChips .chip").forEach(c=>{const on=ps.indexOf(c.textContent)>=0;c.classList.toggle("on",on);if(on)selPositions.add(c.textContent);});
@@ -568,9 +608,9 @@ function mmdd(dateStr){const p=String(dateStr||"").split("/");if(p.length<3)retu
 function renderCheck(rows){
   CHECK_CACHE=rows||[];
   if(!rows.length){document.getElementById("checkList").innerHTML='<div class="loading">この年度の入力データはまだありません。</div>';return;}
-  let h='<table><thead><tr><th>試合日</th><th>児童</th><th>打席</th><th>安打</th><th>打点</th><th>得点</th><th>出塁</th><th>代打</th><th>守備</th><th>出場</th><th>評価</th><th>操作</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>試合日</th><th>児童</th><th>打席</th><th>安打</th><th>打点</th><th>得点</th><th>出塁</th><th>代打</th><th>盗塁</th><th>守備</th><th>出場</th><th>評価</th><th>操作</th></tr></thead><tbody>';
   rows.forEach(r=>{
-    h+=`<tr><td style="white-space:nowrap">${mmdd(r.date)}</td><td>${r.child}</td><td>${r.daseki}</td><td>${r.anda}</td><td>${r.daten}</td><td>${r.tokuten}</td><td>${r.shutsurui}</td><td>${r.daida}</td><td style="font-size:.72rem">${r.positions||""}</td><td style="font-size:.72rem">${r.start||""}</td><td>${r.play||""}</td>`+
+    h+=`<tr><td style="white-space:nowrap">${mmdd(r.date)}</td><td>${r.child}</td><td>${r.daseki}</td><td>${r.anda}</td><td>${r.daten}</td><td>${r.tokuten}</td><td>${r.shutsurui}</td><td>${r.daida}</td><td>${r.tourui||0}</td><td style="font-size:.72rem">${r.positions||""}</td><td style="font-size:.72rem">${r.start||""}</td><td>${r.play||""}</td>`+
       `<td><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch"><button class="rowbtn edit" style="margin:0" onclick="editTeeball('${r.ts}')">修正</button><button class="rowbtn del" style="margin:0" onclick="delTeeball('${r.ts}')">削除</button></div></td></tr>`;
   });
   h+='</tbody></table>';
@@ -985,10 +1025,11 @@ async function loadStamp(fresh){
     const byChild={};
     (d.teeball||[]).forEach(r=>{
       const c=r.child;if(!c)return;
-      if(!STAMP_TOTALS[c])STAMP_TOTALS[c]={daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0};
+      if(!STAMP_TOTALS[c])STAMP_TOTALS[c]={daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0};
       STAMP_TOTALS[c].daseki+=Number(r.daseki)||0;STAMP_TOTALS[c].anda+=Number(r.anda)||0;
       STAMP_TOTALS[c].daten+=Number(r.daten)||0;STAMP_TOTALS[c].tokuten+=Number(r.tokuten)||0;
       STAMP_TOTALS[c].shutsurui+=Number(r.shutsurui)||0;STAMP_TOTALS[c].daida+=Number(r.daida)||0;
+      STAMP_TOTALS[c].tourui+=Number(r.tourui)||0;   // ver016：盗塁（旧データは0）
       (byChild[c]=byChild[c]||[]).push(r);
     });
     // 初めて記録（各成績が初めて1以上になった試合日）
@@ -1008,7 +1049,7 @@ async function loadStamp(fresh){
 }
 function renderStamps(){
   const child=document.getElementById("stampChild").value;
-  const t=STAMP_TOTALS[child]||{daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0};
+  const t=STAMP_TOTALS[child]||{daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0};
   const f=STAMP_FIRSTS[child]||{};
   // 獲得数カウント
   let got=0,total=0;
@@ -1018,7 +1059,7 @@ function renderStamps(){
     +'<div class="sh-got">🏅 獲得スタンプ '+got+' / '+total+'</div></div>';
   // 通算成績
   h+='<div class="stamp-gtitle">📊 通算成績<span class="bar"></span></div>';
-  h+='<div class="stat-line">打席 <b>'+t.daseki+'</b>　安打 <b>'+t.anda+'</b>　打点 <b>'+t.daten+'</b>　得点 <b>'+t.tokuten+'</b>　出塁 <b>'+t.shutsurui+'</b>　代打 <b>'+t.daida+'</b></div>';
+  h+='<div class="stat-line">打席 <b>'+t.daseki+'</b>　安打 <b>'+t.anda+'</b>　打点 <b>'+t.daten+'</b>　得点 <b>'+t.tokuten+'</b>　出塁 <b>'+t.shutsurui+'</b>　代打 <b>'+t.daida+'</b>　盗塁 <b>'+(t.tourui||0)+'</b></div>';
   // 初めて記録
   h+='<div class="stamp-gtitle">🌱 初めて記録<span class="bar"></span></div>';
   const tags=[];
