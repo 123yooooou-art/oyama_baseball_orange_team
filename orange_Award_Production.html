@@ -1017,11 +1017,22 @@ bindKindFilter("statPitchFilter",k=>{statPitch=k;applyStatsFilter();});
 
 /* ===== 個人スタンプ ===== */
 let STAMP_TOTALS={}, STAMP_FIRSTS={};
+/* ===== ver017：個人の累積成長グラフ =====
+   項目と色はここで調整できる（key=データ項目名） */
+const P_GROWTH_METRICS=[
+  {key:"anda",      label:"安打", unit:"本",   color:"#f06a1e"},
+  {key:"daten",     label:"打点", unit:"点",   color:"#e9505f"},
+  {key:"tokuten",   label:"得点", unit:"点",   color:"#e89a00"},
+  {key:"shutsurui", label:"出塁", unit:"回",   color:"#1f9d63"},
+  {key:"tourui",    label:"盗塁", unit:"個",   color:"#378add"},
+  {key:"daseki",    label:"打席", unit:"打席", color:"#9b6bd3"}
+];
+let STAMP_GAMES={}, selGrowMetric="anda", pGrowthChart=null;
 async function loadStamp(fresh){
   const el=document.getElementById("stampBody");el.innerHTML='<div class="loading">読み込み中…</div>';
   try{
     const d=await cachedGet(GAS_URL+"?view=teeball&year="+encodeURIComponent(document.getElementById("stampYear").value),fresh);
-    STAMP_TOTALS={};STAMP_FIRSTS={};
+    STAMP_TOTALS={};STAMP_FIRSTS={};STAMP_GAMES={};
     const byChild={};
     (d.teeball||[]).forEach(r=>{
       const c=r.child;if(!c)return;
@@ -1043,6 +1054,13 @@ async function loadStamp(fresh){
         if(!f.firstRun && (Number(r.tokuten)||0)>0)f.firstRun=r.date;
       });
       STAMP_FIRSTS[c]=f;
+      /* ver017：成長グラフ用＝試合日ごとの合算（日付昇順。同じ日は1試合として合算） */
+      const games=[];let cur=null;
+      recs.forEach(r=>{
+        if(!cur||cur.date!==r.date){cur={date:r.date,daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0};games.push(cur);}
+        ["daseki","anda","daten","tokuten","shutsurui","daida","tourui"].forEach(k=>cur[k]+=Number(r[k])||0);
+      });
+      STAMP_GAMES[c]=games;
     });
     renderStamps();
   }catch(e){el.innerHTML='<div class="loading">取得できませんでした。</div>';}
@@ -1060,6 +1078,18 @@ function renderStamps(){
   // 通算成績
   h+='<div class="stamp-gtitle">📊 通算成績<span class="bar"></span></div>';
   h+='<div class="stat-line">打席 <b>'+t.daseki+'</b>　安打 <b>'+t.anda+'</b>　打点 <b>'+t.daten+'</b>　得点 <b>'+t.tokuten+'</b>　出塁 <b>'+t.shutsurui+'</b>　代打 <b>'+t.daida+'</b>　盗塁 <b>'+(t.tourui||0)+'</b></div>';
+  // ver017：せいちょうグラフ（累積の線グラフ・項目切り替え）
+  h+='<div class="stamp-gtitle">📈 せいちょうグラフ<span class="bar"></span></div>';
+  const games=STAMP_GAMES[child]||[];
+  if(games.length){
+    h+='<div class="kind-filter" id="pGrowSel">'
+      +P_GROWTH_METRICS.map(m=>'<button data-kind="'+m.key+'"'+(m.key===selGrowMetric?' class="on"':'')+'>'+m.label+'</button>').join('')
+      +'</div>';
+    h+='<div class="chart-box" style="height:230px;"><canvas id="pGrowth" role="img" aria-label="累積の成長グラフ"></canvas></div>';
+    h+='<p class="note" style="margin-top:2px">しあいを かさねるごとに、どんどん つみあがっていくよ！</p>';
+  }else{
+    h+='<div class="cer-empty">まだ しあいの きろくが ないよ。これから いっぱい ふやそう！</div>';
+  }
   // 初めて記録
   h+='<div class="stamp-gtitle">🌱 初めて記録<span class="bar"></span></div>';
   const tags=[];
@@ -1085,6 +1115,27 @@ function renderStamps(){
     h+='</div>';
   });
   document.getElementById("stampBody").innerHTML=h;
+  /* ver017：グラフの描画とボタン配線（innerHTML反映後） */
+  if(games.length){
+    bindKindFilter("pGrowSel",k=>{selGrowMetric=k;renderStamps();});
+    renderPersonalGrowth(games);
+  }
+}
+/* ver017：累積の成長グラフを描く（Chart.jsは年度成績タブと共用） */
+function renderPersonalGrowth(games){
+  if(typeof Chart==="undefined")return;
+  const m=P_GROWTH_METRICS.find(x=>x.key===selGrowMetric)||P_GROWTH_METRICS[0];
+  const labels=games.map((g,i)=>"第"+(i+1)+"戦");
+  let acc=0;const data=games.map(g=>{acc+=(Number(g[m.key])||0);return acc;});
+  if(pGrowthChart)pGrowthChart.destroy();
+  pGrowthChart=new Chart(document.getElementById("pGrowth"),{type:"line",
+    data:{labels:labels,datasets:[{label:"つみあげ "+m.label+"（"+m.unit+"）",data:data,
+      borderColor:m.color,backgroundColor:m.color+"33",fill:true,tension:.25,
+      pointStyle:"circle",pointRadius:5,pointHoverRadius:7,borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{usePointStyle:true,boxWidth:12,font:{size:12,weight:"bold"}}},
+        tooltip:{callbacks:{title:function(items){const g=games[items[0].dataIndex];return "第"+(items[0].dataIndex+1)+"戦（"+mmdd(g.date)+"）";}}}},
+      scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{ticks:{font:{size:11}}}}}});
 }
 document.getElementById("stampRefresh").onclick=()=>loadStamp(true);
 document.getElementById("stampYear").onchange=()=>loadStamp();
