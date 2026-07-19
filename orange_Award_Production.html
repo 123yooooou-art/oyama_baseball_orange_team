@@ -668,11 +668,11 @@ document.getElementById("awYear").onchange=()=>loadAwards();
 /* ===== 表彰画面（第3段階・カラフルポップ） ===== */
 /* 各賞の絵文字とカード色（カラフルポップ） */
 const AWARD_META={
-  "打率キング":   {emoji:"👑",grad:"linear-gradient(135deg,#ff8a00,#ff5e62)"},
-  "安打キング":   {emoji:"🏏",grad:"linear-gradient(135deg,#f7971e,#ffd200)"},
-  "打点キング":   {emoji:"💥",grad:"linear-gradient(135deg,#fc6076,#ff9a44)"},
-  "得点キング":   {emoji:"🏃",grad:"linear-gradient(135deg,#36d1dc,#5b86e5)"},
-  "出塁キング":   {emoji:"🚀",grad:"linear-gradient(135deg,#11998e,#38ef7d)"},
+  "打率賞":   {emoji:"👑",grad:"linear-gradient(135deg,#ff8a00,#ff5e62)"},
+  "安打賞":   {emoji:"🏏",grad:"linear-gradient(135deg,#f7971e,#ffd200)"},
+  "打点賞":   {emoji:"💥",grad:"linear-gradient(135deg,#fc6076,#ff9a44)"},
+  "得点賞":   {emoji:"🏃",grad:"linear-gradient(135deg,#36d1dc,#5b86e5)"},
+  "出塁賞":   {emoji:"🚀",grad:"linear-gradient(135deg,#11998e,#38ef7d)"},
   "オールラウンダー賞":{emoji:"🌈",grad:"linear-gradient(135deg,#a18cd1,#fbc2eb)"},
   "守備好プレー賞":{emoji:"🧤",grad:"linear-gradient(135deg,#4facfe,#00f2fe)"},
   "カバーありがとう賞":{emoji:"🤝",grad:"linear-gradient(135deg,#fa709a,#fee140)"},
@@ -683,11 +683,11 @@ const AWARD_META={
 const AWARD_FALLBACK={emoji:"🏅",grad:"linear-gradient(135deg,#f06a1e,#ffb347)"};
 /* 1人1賞の割り当て：この優先順で、まだ賞のない子の中で最上位の子へ割り当てる */
 const AWARD_DEFS=[
-  {name:"打率キング", cond:function(t,md){return t.daseki>=md;}, metric:function(t){return t.avg;}, fmt:function(v){return v.toFixed(3).replace(/^0/,'');}},
-  {name:"安打キング", metric:function(t){return t.anda;}, fmt:function(v){return v+"本";}},
-  {name:"打点キング", metric:function(t){return t.daten;}, fmt:function(v){return v+"点";}},
-  {name:"得点キング", metric:function(t){return t.tokuten;}, fmt:function(v){return v+"点";}},
-  {name:"出塁キング", metric:function(t){return t.shutsurui;}, fmt:function(v){return v+"回";}},
+  {name:"打率賞", cond:function(t,md){return t.daseki>=md;}, metric:function(t){return t.avg;}, fmt:function(v){return v.toFixed(3).replace(/^0/,'');}},
+  {name:"安打賞", metric:function(t){return t.anda;}, fmt:function(v){return v+"本";}},
+  {name:"打点賞", metric:function(t){return t.daten;}, fmt:function(v){return v+"点";}},
+  {name:"得点賞", metric:function(t){return t.tokuten;}, fmt:function(v){return v+"点";}},
+  {name:"出塁賞", metric:function(t){return t.shutsurui;}, fmt:function(v){return v+"回";}},
   {name:"オールラウンダー賞", metric:function(t){return t.posKinds;}, fmt:function(v){return v+"ポジション";}},
   {name:"守備好プレー賞", metric:function(t){return t.play;}, fmt:function(v){return v+"pt";}},
   {name:"カバーありがとう賞", metric:function(t){return t.sub;}, fmt:function(v){return v+"回";}},
