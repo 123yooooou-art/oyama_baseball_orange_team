@@ -63,6 +63,33 @@
   tfoot td{font-weight:800;border-top:2px solid var(--ink);border-bottom:none;color:var(--orange);}
   .help{background:var(--orange-soft);border-radius:10px;padding:10px 12px;font-size:.78rem;color:#9a4a1a;margin-bottom:14px;}
 
+  /* ===== ver019：全タブ共通フィルタのバー（タブバーの下に固定） ===== */
+  /* 初期表示は成績入力タブなので既定は非表示。タブ切替時にJSで出し入れする */
+  .gfilter{background:#fff;border-bottom:1px solid var(--line);padding:8px 12px;display:none;flex-wrap:wrap;gap:6px 16px;
+    position:sticky;top:104px;z-index:8;}
+  .gf-row{display:flex;align-items:center;gap:8px;}
+  .gf-lbl{font-size:.72rem;font-weight:800;color:var(--muted);}
+  .gfilter .kind-filter button{padding:5px 11px;font-size:.74rem;}
+
+  /* ===== ver019：入力確認＝スマホはカード／PCは表（表示だけの切り替え。動作は同じ） ===== */
+  .check-sp{display:none;}
+  .chk-card{border:2px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px;background:#fff;}
+  .chk-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:2px solid var(--orange-soft);padding-bottom:8px;margin-bottom:10px;}
+  .chk-date{font-weight:800;color:var(--orange);font-size:.95rem;white-space:nowrap;}
+  .chk-name{font-weight:800;font-size:1.02rem;}
+  .chk-items{display:flex;flex-wrap:wrap;gap:6px;}
+  .chk-item{background:#faf7f4;border-radius:9px;padding:5px 9px;font-size:.82rem;white-space:nowrap;}
+  .chk-item b{font-size:.95rem;margin-left:3px;}
+  .chk-item.wide{width:100%;white-space:normal;}
+  .chk-ops{display:flex;gap:10px;margin-top:12px;}
+  .chk-ops button{flex:1;padding:12px 0;font-size:.92rem;font-weight:800;border-radius:10px;border:2px solid var(--line);background:#fff;cursor:pointer;}
+  .chk-ops .edit{border-color:var(--orange);color:var(--orange);}
+  .chk-ops .del{border-color:#e08585;color:#c94a4a;}
+  @media(max-width:640px){
+    .check-sp{display:block;}
+    .check-pc{display:none;}
+  }
+
   /* ===== カラフルポップ表彰画面 ===== */
   .cer-bar{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;}
   .kind-filter{display:flex;gap:6px;}
@@ -173,6 +200,24 @@
   <button class="tab" data-panel="stamp">スタ<br>ンプ</button>
 </div>
 
+<!-- ver019：全タブ共通のフィルタ（区分／試合種別）。タブを切り替えても条件は維持される -->
+<div class="gfilter" id="gFilterBar">
+  <div class="gf-row"><span class="gf-lbl">区分</span>
+    <div class="kind-filter" id="gBunruiFilter">
+      <button data-kind="all" class="on">全部</button>
+      <button data-kind="taikai">大会</button>
+      <button data-kind="renshu">練習</button>
+    </div>
+  </div>
+  <div class="gf-row"><span class="gf-lbl">試合種別</span>
+    <div class="kind-filter" id="gKindFilter">
+      <button data-kind="all" class="on">全部</button>
+      <button data-kind="tee">ティー</button>
+      <button data-kind="throw">投げ</button>
+    </div>
+  </div>
+</div>
+
 <div class="wrap">
 
   <!-- ===== 成績入力 ===== -->
@@ -201,7 +246,12 @@
         <div class="field"><label for="shutsurui">出塁</label><input id="shutsurui" type="number" inputmode="numeric" value="0" min="0"></div>
         <div class="field"><label for="daida">代打</label><input id="daida" type="number" inputmode="numeric" value="0" min="0"></div>
         <div class="field"><label for="tourui">盗塁</label><input id="tourui" type="number" inputmode="numeric" value="0" min="0"></div>
+        <!-- ver019：四球・死球・振り逃げ（出塁の内訳。出塁欄には今までどおり「塁に出た回数すべて」を入れる） -->
+        <div class="field"><label for="bb">四球</label><input id="bb" type="number" inputmode="numeric" value="0" min="0"></div>
+        <div class="field"><label for="hbp">死球</label><input id="hbp" type="number" inputmode="numeric" value="0" min="0"></div>
+        <div class="field"><label for="furinige">振り逃げ</label><input id="furinige" type="number" inputmode="numeric" value="0" min="0"></div>
       </div>
+      <p class="note" style="margin:-8px 0 14px;">「出塁」は今までどおり<b>塁に出た回数すべて</b>（四球・死球・振り逃げ・エラーなども含む）を入れてください。四球・死球・振り逃げは<b>その内訳</b>の記録です（出塁に足す必要はありません）。</p>
 
       <div class="field">
         <label>守備位置（複数選択可）</label>
@@ -253,22 +303,7 @@
         <select class="year-sel" id="awYear"></select>
         <button class="refresh" id="awRefresh">↻</button>
       </div>
-      <div class="stat-filters">
-        <div class="sf-row"><span class="sf-lbl">区分</span>
-          <div class="kind-filter" id="awBunrui">
-            <button data-kind="all" class="on">全部</button>
-            <button data-kind="taikai">大会</button>
-            <button data-kind="renshu">練習</button>
-          </div>
-        </div>
-        <div class="sf-row"><span class="sf-lbl">試合種別</span>
-          <div class="kind-filter" id="awKind">
-            <button data-kind="all" class="on">全部</button>
-            <button data-kind="tee">ティー</button>
-            <button data-kind="throw">投げ</button>
-          </div>
-        </div>
-      </div>
+      <!-- ver019：区分・試合種別のフィルタは画面上部の共通バーへ移動 -->
       <div id="awInfo" class="note" style="margin-bottom:12px;"></div>
       <div id="awList"><div class="loading">読み込み中…</div></div>
     </div>
@@ -276,22 +311,7 @@
 
   <!-- ===== 表彰（第3段階・カラフルポップ） ===== -->
   <div class="panel" id="panel-ceremony">
-    <div class="stat-filters">
-      <div class="sf-row"><span class="sf-lbl">区分</span>
-        <div class="kind-filter" id="cerBunrui">
-          <button data-kind="all" class="on">全部</button>
-          <button data-kind="taikai">大会</button>
-          <button data-kind="renshu">練習</button>
-        </div>
-      </div>
-      <div class="sf-row"><span class="sf-lbl">試合種別</span>
-        <div class="kind-filter" id="cerKind">
-          <button data-kind="all" class="on">全部</button>
-          <button data-kind="tee">ティー</button>
-          <button data-kind="throw">投げ</button>
-        </div>
-      </div>
-    </div>
+    <!-- ver019：区分・試合種別のフィルタは画面上部の共通バーへ移動 -->
     <div class="cer-bar">
       <div style="display:flex;align-items:center;gap:10px;">
         <select class="year-sel" id="cerYear"></select>
@@ -314,22 +334,7 @@
         <select class="year-sel" id="statsYear"></select>
         <button class="refresh" id="statsRefresh">↻</button>
       </div>
-      <div class="stat-filters">
-        <div class="sf-row"><span class="sf-lbl">区分</span>
-          <div class="kind-filter" id="statKindFilter">
-            <button data-kind="all" class="on">全部</button>
-            <button data-kind="taikai">大会</button>
-            <button data-kind="renshu">練習</button>
-          </div>
-        </div>
-        <div class="sf-row"><span class="sf-lbl">試合種別</span>
-          <div class="kind-filter" id="statPitchFilter">
-            <button data-kind="all" class="on">全部</button>
-            <button data-kind="tee">ティー</button>
-            <button data-kind="throw">投げ</button>
-          </div>
-        </div>
-      </div>
+      <!-- ver019：区分・試合種別のフィルタは画面上部の共通バーへ移動 -->
       <div id="teamTop"></div>
       <div class="stats-grid" id="statsCards"></div>
       <div class="legend">
@@ -440,11 +445,57 @@ const STAMPS = {
       {name:"経験を積んだ", emoji:"🌿", n:10},
       {name:"打席のベテラン", emoji:"🌳", n:20},
       {name:"レジェンド", emoji:"🏆", n:30}
+    ]},
+  /* ===== ver019：追加スタンプ（四球・振り逃げ・出場試合数・守備位置の種類・連続記録） ===== */
+  walk: { label:"四球スタンプ（通算四球）", metric:"bb", unit:"回",
+    grad:"linear-gradient(135deg,#43cea2,#185a9d)",
+    tiers:[
+      {name:"初四球", emoji:"🎫", n:1},
+      {name:"選球眼", emoji:"👀", n:3},
+      {name:"ボールは振らない", emoji:"🧘", n:5},
+      {name:"四球マスター", emoji:"🎓", n:10}
+    ]},
+  furinige: { label:"振り逃げスタンプ（通算振り逃げ）", metric:"furinige", unit:"回",
+    grad:"linear-gradient(135deg,#f7b733,#fc4a1a)",
+    tiers:[
+      {name:"初振り逃げ", emoji:"🏃‍♂️", n:1},
+      {name:"あきらめない走塁", emoji:"🔥", n:3},
+      {name:"振り逃げの達人", emoji:"🥷", n:5}
+    ]},
+  attend: { label:"出場スタンプ（通算出場試合数）", metric:"gameCount", unit:"試合",
+    grad:"linear-gradient(135deg,#4facfe,#00f2fe)",
+    tiers:[
+      {name:"はじめての試合", emoji:"🎽", n:1},
+      {name:"3試合出場", emoji:"👍", n:3},
+      {name:"5試合出場", emoji:"💪", n:5},
+      {name:"10試合出場", emoji:"🎖️", n:10}
+    ]},
+  glove: { label:"守備スタンプ（守ったポジションの数）", metric:"posKinds", unit:"種類",
+    grad:"linear-gradient(135deg,#a8e063,#56ab2f)",
+    tiers:[
+      {name:"2ポジション", emoji:"🧤", n:2},
+      {name:"3ポジション", emoji:"🛡️", n:3},
+      {name:"5ポジション", emoji:"🌈", n:5}
+    ]},
+  hitrun: { label:"連続ヒットスタンプ（出場した試合で連続）", metric:"hitStreak", unit:"試合連続",
+    grad:"linear-gradient(135deg,#ff8a00,#ff5e62)",
+    tiers:[
+      {name:"2試合連続ヒット", emoji:"⚾", n:2},
+      {name:"3試合連続ヒット", emoji:"🌟", n:3}
+    ]},
+  reachrun: { label:"連続出塁スタンプ（出場した試合で連続）", metric:"reachStreak", unit:"試合連続",
+    grad:"linear-gradient(135deg,#11998e,#38ef7d)",
+    tiers:[
+      {name:"2試合連続出塁", emoji:"👟", n:2},
+      {name:"3試合連続出塁", emoji:"✨", n:3}
     ]}
 };
 
 let CHILDREN=[], GAME_DATES=[], YEARS=[], CUR_YEAR=null;
-let selAwKind="all", selCerKind="all", selAwBunrui="all", selCerBunrui="all";
+/* ver019：区分・試合種別は全タブ共通の1組で持つ（タブを切り替えても維持される）
+   gBunrui: all/taikai/renshu   gKind: all/tee/throw */
+let gBunrui="all", gKind="all";
+let GAME_META={};   // ver019：試合日 → {kind:区分, pitch:試合種別}。入力確認・スタンプの絞り込みに使う
 const KIND_LABEL={all:"全部",tee:"ティー試合",throw:"投げ試合"};
 const BUNRUI_LABEL={all:"全部",taikai:"大会",renshu:"練習"};
 let selPositions=new Set(), selStart="スタメン", selPlay="";
@@ -488,6 +539,8 @@ document.querySelectorAll(".tab").forEach(t=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
     document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");document.getElementById("panel-"+t.dataset.panel).classList.add("active");
+    /* ver019：共通フィルタバーは成績入力タブでは隠す（入力画面には効かないため） */
+    document.getElementById("gFilterBar").style.display=(t.dataset.panel==="input")?"none":"flex";
     if(t.dataset.panel==="check")loadCheck();
     if(t.dataset.panel==="awards")loadAwards();
     if(t.dataset.panel==="ceremony")loadCeremony();
@@ -511,6 +564,9 @@ document.getElementById("submit").onclick=async()=>{
     shutsurui:+document.getElementById("shutsurui").value,
     daida:+document.getElementById("daida").value,
     tourui:+document.getElementById("tourui").value,   // ver016：盗塁
+    bb:+document.getElementById("bb").value,            // ver019：四球
+    hbp:+document.getElementById("hbp").value,          // ver019：死球
+    furinige:+document.getElementById("furinige").value,// ver019：振り逃げ
     positions:Array.from(selPositions).join("・"),
     start:selStart,
     play:selPlay
@@ -521,7 +577,7 @@ document.getElementById("submit").onclick=async()=>{
     clearMem();
     toast(editingTeeballTs?"成績を修正しました ✓":"記録しました ✓");
     // 入力欄リセット
-    ["daseki","anda","daten","tokuten","shutsurui","daida","tourui"].forEach(id=>document.getElementById(id).value=0);
+    ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige"].forEach(id=>document.getElementById(id).value=0);
     selPositions.clear();document.querySelectorAll("#posChips .chip").forEach(c=>c.classList.remove("on"));
     document.querySelectorAll("#segPlay .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selPlay="";
     cancelTeeballEdit();
@@ -536,7 +592,7 @@ function cancelTeeballEdit(){
   document.getElementById("submit").textContent="＋ この選手の成績を記録";
 }
 document.getElementById("tbEditCancel").onclick=()=>{
-  ["daseki","anda","daten","tokuten","shutsurui","daida","tourui"].forEach(id=>document.getElementById(id).value=0);
+  ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige"].forEach(id=>document.getElementById(id).value=0);
   selPositions.clear();document.querySelectorAll("#posChips .chip").forEach(c=>c.classList.remove("on"));
   document.querySelectorAll("#segStart .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selStart="スタメン";
   document.querySelectorAll("#segPlay .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selPlay="";
@@ -552,6 +608,8 @@ function editTeeball(ts){
   document.getElementById("daten").value=r.daten||0;document.getElementById("tokuten").value=r.tokuten||0;
   document.getElementById("shutsurui").value=r.shutsurui||0;document.getElementById("daida").value=r.daida||0;
   document.getElementById("tourui").value=r.tourui||0;   // ver016：盗塁
+  document.getElementById("bb").value=r.bb||0;document.getElementById("hbp").value=r.hbp||0;
+  document.getElementById("furinige").value=r.furinige||0;   // ver019：四球・死球・振り逃げ
   selPositions.clear();
   const ps=String(r.positions||"").split("・").filter(x=>x);
   document.querySelectorAll("#posChips .chip").forEach(c=>{const on=ps.indexOf(c.textContent)>=0;c.classList.toggle("on",on);if(on)selPositions.add(c.textContent);});
@@ -595,25 +653,78 @@ function fillDates(){
   GAME_DATES.forEach(g=>{const o=document.createElement("option");o.value=g.date;o.textContent=g.date+"　vs "+g.opp;dateSel.appendChild(o);});
 }
 
+/* ===== ver019：共通フィルタ（区分・試合種別）を成績データに適用する仕組み =====
+   GASの賞の算出と同じ判定：試合日→gameシートの区分・試合種別で絞る（同じ日は後勝ち）。 */
+async function loadGameMeta(year,fresh){
+  const d=await cachedGet(GAS_URL+"?view=stats&year="+encodeURIComponent(year),fresh);
+  const m={};
+  (d.games||[]).forEach(g=>{if(g.date)m[g.date]={kind:g.kind||"",pitch:g.pitch||""};});
+  GAME_META=m;return m;
+}
+/* 試合日がいまのフィルタ条件に合うか（全部＝素通し） */
+function passGlobalFilter(date){
+  const meta=GAME_META[date]||{};
+  if(gBunrui==="taikai" && meta.kind!=="大会")return false;
+  if(gBunrui==="renshu" && meta.kind!=="練習試合")return false;
+  if(gKind==="tee" && meta.pitch!=="ティー試合")return false;
+  if(gKind==="throw" && meta.pitch!=="投げ試合")return false;
+  return true;
+}
+function filterRecords(rows){
+  if(gBunrui==="all" && gKind==="all")return rows;
+  return (rows||[]).filter(r=>passGlobalFilter(r.date));
+}
+/* いまの絞り込み条件の見出し（各タブの注記に出す） */
+function filterLabel(){
+  return (gBunrui==="all"&&gKind==="all")?"すべての試合"
+    :"［"+BUNRUI_LABEL[gBunrui]+"／"+KIND_LABEL[gKind]+"］で絞り込み中";
+}
+
 /* 確認タブ：入力済みデータ一覧 */
 async function loadCheck(fresh){
   const el=document.getElementById("checkList");el.innerHTML='<div class="loading">読み込み中…</div>';
   try{
-    const d=await cachedGet(GAS_URL+"?view=teeball&year="+encodeURIComponent(document.getElementById("checkYear").value),fresh);
-    renderCheck(d.teeball||[]);
+    const y=document.getElementById("checkYear").value;
+    const [d]=await Promise.all([
+      cachedGet(GAS_URL+"?view=teeball&year="+encodeURIComponent(y),fresh),
+      loadGameMeta(y,fresh)   // ver019：共通フィルタ用の対応表
+    ]);
+    renderCheck(filterRecords(d.teeball||[]));
   }catch(e){el.innerHTML='<div class="loading">取得できませんでした。</div>';}
 }
 /* 表示専用：yyyy/MM/dd → M/D（内部の年・年度処理は変更しない） */
 function mmdd(dateStr){const p=String(dateStr||"").split("/");if(p.length<3)return dateStr||"";return parseInt(p[1],10)+"/"+parseInt(p[2],10);}
 function renderCheck(rows){
   CHECK_CACHE=rows||[];
-  if(!rows.length){document.getElementById("checkList").innerHTML='<div class="loading">この年度の入力データはまだありません。</div>';return;}
-  let h='<table><thead><tr><th>試合日</th><th>児童</th><th>打席</th><th>安打</th><th>打点</th><th>得点</th><th>出塁</th><th>代打</th><th>盗塁</th><th>守備</th><th>出場</th><th>評価</th><th>操作</th></tr></thead><tbody>';
+  if(!rows.length){document.getElementById("checkList").innerHTML='<div class="loading">'
+    +((gBunrui==="all"&&gKind==="all")?'この年度の入力データはまだありません。'
+      :'この絞り込み（'+BUNRUI_LABEL[gBunrui]+'／'+KIND_LABEL[gKind]+'）に当てはまる入力データはありません。')+'</div>';return;}
+  /* PC用：表（従来どおり。ver019で四球・死球・振り逃げの列を追加） */
+  let h='<div class="check-pc"><table><thead><tr><th>試合日</th><th>児童</th><th>打席</th><th>安打</th><th>打点</th><th>得点</th><th>出塁</th><th>代打</th><th>盗塁</th><th>四球</th><th>死球</th><th>振逃</th><th>守備</th><th>出場</th><th>評価</th><th>操作</th></tr></thead><tbody>';
   rows.forEach(r=>{
-    h+=`<tr><td style="white-space:nowrap">${mmdd(r.date)}</td><td>${r.child}</td><td>${r.daseki}</td><td>${r.anda}</td><td>${r.daten}</td><td>${r.tokuten}</td><td>${r.shutsurui}</td><td>${r.daida}</td><td>${r.tourui||0}</td><td style="font-size:.72rem">${r.positions||""}</td><td style="font-size:.72rem">${r.start||""}</td><td>${r.play||""}</td>`+
+    h+=`<tr><td style="white-space:nowrap">${mmdd(r.date)}</td><td>${r.child}</td><td>${r.daseki}</td><td>${r.anda}</td><td>${r.daten}</td><td>${r.tokuten}</td><td>${r.shutsurui}</td><td>${r.daida}</td><td>${r.tourui||0}</td><td>${r.bb||0}</td><td>${r.hbp||0}</td><td>${r.furinige||0}</td><td style="font-size:.72rem">${r.positions||""}</td><td style="font-size:.72rem">${r.start||""}</td><td>${r.play||""}</td>`+
       `<td><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch"><button class="rowbtn edit" style="margin:0" onclick="editTeeball('${r.ts}')">修正</button><button class="rowbtn del" style="margin:0" onclick="delTeeball('${r.ts}')">削除</button></div></td></tr>`;
   });
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
+  /* ver019 スマホ用：1件＝1カード（見出し＝試合日・児童名／項目名＋値／操作ボタン横並び） */
+  h+='<div class="check-sp">';
+  rows.forEach(r=>{
+    const it=(lbl,v)=>'<span class="chk-item">'+lbl+'<b>'+v+'</b></span>';
+    h+='<div class="chk-card">'
+      +'<div class="chk-head"><span class="chk-date">'+mmdd(r.date)+'</span><span class="chk-name">'+esc(r.child)+'</span></div>'
+      +'<div class="chk-items">'
+      +it("打席",r.daseki||0)+it("安打",r.anda||0)+it("打点",r.daten||0)+it("得点",r.tokuten||0)
+      +it("出塁",r.shutsurui||0)+it("代打",r.daida||0)+it("盗塁",r.tourui||0)
+      +it("四球",r.bb||0)+it("死球",r.hbp||0)+it("振り逃げ",r.furinige||0)
+      +'<span class="chk-item wide">守備<b>'+esc(r.positions||"—")+'</b></span>'
+      +'<span class="chk-item">出場<b>'+esc(r.start||"—")+'</b></span>'
+      +'<span class="chk-item">評価<b>'+esc(r.play||"—")+'</b></span>'
+      +'</div>'
+      +'<div class="chk-ops"><button class="edit" onclick="editTeeball(\''+r.ts+'\')">✏️ 修正</button>'
+      +'<button class="del" onclick="delTeeball(\''+r.ts+'\')">🗑 削除</button></div>'
+      +'</div>';
+  });
+  h+='</div>';
   document.getElementById("checkList").innerHTML=h;
 }
 document.getElementById("checkRefresh").onclick=()=>loadCheck(true);
@@ -624,13 +735,13 @@ document.getElementById("checkYear").onchange=()=>loadCheck();
 async function loadAwards(fresh){
   const el=document.getElementById("awList");el.innerHTML='<div class="loading">読み込み中…</div>';
   try{
-    const d=await cachedGet(GAS_URL+"?view=awards&year="+encodeURIComponent(document.getElementById("awYear").value)+"&kind="+selAwKind+"&bunrui="+selAwBunrui,fresh);
+    const d=await cachedGet(GAS_URL+"?view=awards&year="+encodeURIComponent(document.getElementById("awYear").value)+"&kind="+gKind+"&bunrui="+gBunrui,fresh);
     renderAwards(d.awards||{});
   }catch(e){el.innerHTML='<div class="loading">取得できませんでした。</div>';}
 }
 function renderAwards(a){
   const info=document.getElementById("awInfo");
-  info.textContent="［"+BUNRUI_LABEL[selAwBunrui]+"／"+KIND_LABEL[selAwKind]+"］対象試合数: "+(a.totalGames||0)+" / 規定打席: "+(a.minDaseki||0)+"打席（configで変更可）";
+  info.textContent="［"+BUNRUI_LABEL[gBunrui]+"／"+KIND_LABEL[gKind]+"］対象試合数: "+(a.totalGames||0)+" / 規定打席: "+(a.minDaseki||0)+"打席（configで変更可）";
   let h="";
   // データ賞
   h+='<div style="font-weight:800;margin:6px 0 8px;color:#f06a1e;">■ データ賞</div>';
@@ -710,7 +821,7 @@ async function loadCeremony(fresh){
   body.innerHTML='<div class="loading">読み込み中…</div>';
   document.getElementById("cerSub").textContent="集計中…";
   try{
-    const d=await cachedGet(GAS_URL+"?view=awards&year="+encodeURIComponent(document.getElementById("cerYear").value)+"&kind="+selCerKind+"&bunrui="+selCerBunrui,fresh);
+    const d=await cachedGet(GAS_URL+"?view=awards&year="+encodeURIComponent(document.getElementById("cerYear").value)+"&kind="+gKind+"&bunrui="+gBunrui,fresh);
     renderCeremony(d.awards||{});
   }catch(e){body.innerHTML='<div class="cer-empty">取得できませんでした。GAS_URLを確認してください。</div>';document.getElementById("cerSub").textContent="";}
 }
@@ -721,7 +832,7 @@ function winnerHtml(winners){
 }
 function renderCeremony(a){
   document.getElementById("cerSub").textContent=
-    "🎉 ["+BUNRUI_LABEL[selCerBunrui]+"／"+KIND_LABEL[selCerKind]+"] 対象試合数 "+(a.totalGames||0)+"試合 ・ 規定打席 "+(a.minDaseki||0)+"打席";
+    "🎉 ["+BUNRUI_LABEL[gBunrui]+"／"+KIND_LABEL[gKind]+"] 対象試合数 "+(a.totalGames||0)+"試合 ・ 規定打席 "+(a.minDaseki||0)+"打席";
   let h="";
 
   /* 手動賞のデータ */
@@ -880,14 +991,23 @@ function bindKindFilter(id,onpick){
     b.classList.add("on");onpick(b.dataset.kind);
   };});
 }
-bindKindFilter("awKind",k=>{selAwKind=k;loadAwards();});
-bindKindFilter("cerKind",k=>{selCerKind=k;loadCeremony();});
-bindKindFilter("awBunrui",k=>{selAwBunrui=k;loadAwards();});
-bindKindFilter("cerBunrui",k=>{selCerBunrui=k;loadCeremony();});
+/* ver019：全タブ共通フィルタ。変更したら「いま開いているタブ」を再表示する
+   （他のタブはタブを開いたときに読み直されるので、条件はそのまま効く） */
+function reloadActiveTab(){
+  const t=document.querySelector(".tab.active");
+  const p=t?t.dataset.panel:"";
+  if(p==="check")loadCheck();
+  else if(p==="awards")loadAwards();
+  else if(p==="ceremony")loadCeremony();
+  else if(p==="stats")applyStatsFilter();
+  else if(p==="stamp")loadStamp();
+}
+bindKindFilter("gBunruiFilter",k=>{gBunrui=k;reloadActiveTab();});
+bindKindFilter("gKindFilter",k=>{gKind=k;reloadActiveTab();});
 
 /* ===== 年度成績（index.htmlから移植・横軸＝対戦相手） ===== */
 let pieChart=null,lineChart=null,growthChart=null;
-let STATS_GAMES=[], RAW_GAMES=[], RAW_TB=[], statKind="all", statPitch="all";
+let STATS_GAMES=[], RAW_GAMES=[], RAW_TB=[];   // ver019：区分・試合種別は共通の gBunrui/gKind を使う
 function sortByDate(a,b){return a.date<b.date?-1:a.date>b.date?1:0;}
 async function loadStats(fresh){
   const y=document.getElementById("statsYear").value;
@@ -929,8 +1049,8 @@ function renderGameReview(){
 document.getElementById("gameReviewSel").onchange=renderGameReview;
 /* 区分×試合種別で絞り込み、すべて再計算 */
 function applyStatsFilter(){
-  const kv={all:null,taikai:"大会",renshu:"練習試合"}[statKind];
-  const pv={all:null,tee:"ティー試合",throw:"投げ試合"}[statPitch];
+  const kv={all:null,taikai:"大会",renshu:"練習試合"}[gBunrui];
+  const pv={all:null,tee:"ティー試合",throw:"投げ試合"}[gKind];
   const games=RAW_GAMES.filter(g=>(!kv||g.kind===kv)&&(!pv||g.pitch===pv));
   let w=0,l=0,dr=0,gf=0,ga=0;
   games.forEach(g=>{const us=Number(g.us)||0,them=Number(g.them)||0;gf+=us;ga+=them;
@@ -1012,8 +1132,7 @@ function renderStats(d){
 document.getElementById("statsRefresh").onclick=()=>loadStats(true);
 document.getElementById("statsYear").onchange=()=>loadStats();
 bindKindFilter("growthToggle",g=>{growthMode=g;renderGrowth(STATS_GAMES);});
-bindKindFilter("statKindFilter",k=>{statKind=k;applyStatsFilter();});
-bindKindFilter("statPitchFilter",k=>{statPitch=k;applyStatsFilter();});
+/* ver019：年度成績の区分・試合種別フィルタは共通バー（gBunruiFilter/gKindFilter）へ移動 */
 
 /* ===== 個人スタンプ ===== */
 let STAMP_TOTALS={}, STAMP_FIRSTS={};
@@ -1031,16 +1150,26 @@ let STAMP_GAMES={}, selGrowMetric="anda", pGrowthChart=null;
 async function loadStamp(fresh){
   const el=document.getElementById("stampBody");el.innerHTML='<div class="loading">読み込み中…</div>';
   try{
-    const d=await cachedGet(GAS_URL+"?view=teeball&year="+encodeURIComponent(document.getElementById("stampYear").value),fresh);
+    const y=document.getElementById("stampYear").value;
+    const [d]=await Promise.all([
+      cachedGet(GAS_URL+"?view=teeball&year="+encodeURIComponent(y),fresh),
+      loadGameMeta(y,fresh)   // ver019：共通フィルタ用の対応表
+    ]);
     STAMP_TOTALS={};STAMP_FIRSTS={};STAMP_GAMES={};
-    const byChild={};
-    (d.teeball||[]).forEach(r=>{
+    const byChild={}, posSet={};
+    filterRecords(d.teeball||[]).forEach(r=>{   // ver019：共通フィルタを適用
       const c=r.child;if(!c)return;
-      if(!STAMP_TOTALS[c])STAMP_TOTALS[c]={daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0};
+      if(!STAMP_TOTALS[c])STAMP_TOTALS[c]={daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0,
+        bb:0,hbp:0,furinige:0,gameCount:0,posKinds:0,hitStreak:0,reachStreak:0};   // ver019：追加分＋派生値
       STAMP_TOTALS[c].daseki+=Number(r.daseki)||0;STAMP_TOTALS[c].anda+=Number(r.anda)||0;
       STAMP_TOTALS[c].daten+=Number(r.daten)||0;STAMP_TOTALS[c].tokuten+=Number(r.tokuten)||0;
       STAMP_TOTALS[c].shutsurui+=Number(r.shutsurui)||0;STAMP_TOTALS[c].daida+=Number(r.daida)||0;
       STAMP_TOTALS[c].tourui+=Number(r.tourui)||0;   // ver016：盗塁（旧データは0）
+      STAMP_TOTALS[c].bb+=Number(r.bb)||0;STAMP_TOTALS[c].hbp+=Number(r.hbp)||0;
+      STAMP_TOTALS[c].furinige+=Number(r.furinige)||0;   // ver019：四球・死球・振り逃げ（旧データは0）
+      /* ver019：守備位置の種類（「・」区切りを分解して重複なしで数える） */
+      if(!posSet[c])posSet[c]=new Set();
+      String(r.positions||"").split("・").forEach(p=>{if(p)posSet[c].add(p);});
       (byChild[c]=byChild[c]||[]).push(r);
     });
     // 初めて記録（各成績が初めて1以上になった試合日）
@@ -1057,27 +1186,39 @@ async function loadStamp(fresh){
       /* ver017：成長グラフ用＝試合日ごとの合算（日付昇順。同じ日は1試合として合算） */
       const games=[];let cur=null;
       recs.forEach(r=>{
-        if(!cur||cur.date!==r.date){cur={date:r.date,daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0};games.push(cur);}
-        ["daseki","anda","daten","tokuten","shutsurui","daida","tourui"].forEach(k=>cur[k]+=Number(r[k])||0);
+        if(!cur||cur.date!==r.date){cur={date:r.date,daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0,bb:0,hbp:0,furinige:0};games.push(cur);}
+        ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige"].forEach(k=>cur[k]+=Number(r[k])||0);
       });
       STAMP_GAMES[c]=games;
+      /* ver019：出場試合数／守備位置の種類／連続記録（出場した試合だけを日付順に見るので、欠席で連続は途切れない） */
+      const T=STAMP_TOTALS[c];
+      T.gameCount=games.length;
+      T.posKinds=posSet[c]?posSet[c].size:0;
+      let hs=0,rs=0,hbest=0,rbest=0;
+      games.forEach(g=>{
+        hs=(g.anda>0)?hs+1:0; if(hs>hbest)hbest=hs;
+        rs=(g.shutsurui>0)?rs+1:0; if(rs>rbest)rbest=rs;
+      });
+      T.hitStreak=hbest;T.reachStreak=rbest;
     });
     renderStamps();
   }catch(e){el.innerHTML='<div class="loading">取得できませんでした。</div>';}
 }
 function renderStamps(){
   const child=document.getElementById("stampChild").value;
-  const t=STAMP_TOTALS[child]||{daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0};
+  const t=STAMP_TOTALS[child]||{daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0,
+    bb:0,hbp:0,furinige:0,gameCount:0,posKinds:0,hitStreak:0,reachStreak:0};   // ver019
   const f=STAMP_FIRSTS[child]||{};
   // 獲得数カウント
   let got=0,total=0;
   Object.keys(STAMPS).forEach(g=>{STAMPS[g].tiers.forEach(ti=>{total++;if((t[STAMPS[g].metric]||0)>=ti.n)got++;});});
   let h='<div class="stamp-head"><div class="sh-name">'+esc(child||"—")+'</div>'
-    +'<div class="sh-sub">通算安打 '+t.anda+'本 ・ 通算出塁 '+t.shutsurui+'回</div>'
+    +'<div class="sh-sub">通算安打 '+t.anda+'本 ・ 通算出塁 '+t.shutsurui+'回 ・ '+filterLabel()+'</div>'   // ver019：絞り込み状態を表示
     +'<div class="sh-got">🏅 獲得スタンプ '+got+' / '+total+'</div></div>';
   // 通算成績
   h+='<div class="stamp-gtitle">📊 通算成績<span class="bar"></span></div>';
-  h+='<div class="stat-line">打席 <b>'+t.daseki+'</b>　安打 <b>'+t.anda+'</b>　打点 <b>'+t.daten+'</b>　得点 <b>'+t.tokuten+'</b>　出塁 <b>'+t.shutsurui+'</b>　代打 <b>'+t.daida+'</b>　盗塁 <b>'+(t.tourui||0)+'</b></div>';
+  h+='<div class="stat-line">打席 <b>'+t.daseki+'</b>　安打 <b>'+t.anda+'</b>　打点 <b>'+t.daten+'</b>　得点 <b>'+t.tokuten+'</b>　出塁 <b>'+t.shutsurui+'</b>　代打 <b>'+t.daida+'</b>　盗塁 <b>'+(t.tourui||0)+'</b>'
+    +'　四球 <b>'+(t.bb||0)+'</b>　死球 <b>'+(t.hbp||0)+'</b>　振り逃げ <b>'+(t.furinige||0)+'</b>　出場 <b>'+(t.gameCount||0)+'</b>試合</div>';   // ver019
   // ver017：せいちょうグラフ（累積の線グラフ・項目切り替え）
   h+='<div class="stamp-gtitle">📈 せいちょうグラフ<span class="bar"></span></div>';
   const games=STAMP_GAMES[child]||[];
