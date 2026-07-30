@@ -166,6 +166,9 @@
   .stamp-head .sh-got{display:inline-block;margin-top:7px;background:rgba(255,255,255,.28);border-radius:999px;padding:3px 14px;font-size:.82rem;font-weight:800;}
   .stamp-gtitle{display:flex;align-items:center;gap:8px;font-size:.95rem;font-weight:900;margin:18px 0 10px;}
   .stamp-gtitle .bar{flex:1;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--orange),transparent);}
+  /* ver020：カテゴリごとの獲得数バッジ（上限なしなので「○こ」だけ出す） */
+  .stamp-gtitle .g-count{flex:none;background:var(--orange-soft);color:var(--orange);border-radius:999px;
+    padding:2px 9px;font-size:.72rem;font-weight:800;}
   .stamp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .stamp{border-radius:16px;padding:14px 8px 12px;text-align:center;border:2px solid var(--line);position:relative;overflow:hidden;}
   .stamp.on{border-color:transparent;color:#fff;box-shadow:0 5px 14px rgba(0,0,0,.14);}
@@ -250,6 +253,8 @@
         <div class="field"><label for="bb">四球</label><input id="bb" type="number" inputmode="numeric" value="0" min="0"></div>
         <div class="field"><label for="hbp">死球</label><input id="hbp" type="number" inputmode="numeric" value="0" min="0"></div>
         <div class="field"><label for="furinige">振り逃げ</label><input id="furinige" type="number" inputmode="numeric" value="0" min="0"></div>
+        <!-- ver020：ホームラン（安打の内訳。安打欄には今までどおりホームランも含めて入れる） -->
+        <div class="field"><label for="hr">ホームラン</label><input id="hr" type="number" inputmode="numeric" value="0" min="0"></div>
       </div>
       <p class="note" style="margin:-8px 0 14px;">「出塁」は今までどおり<b>塁に出た回数すべて</b>（四球・死球・振り逃げ・エラーなども含む）を入れてください。四球・死球・振り逃げは<b>その内訳</b>の記録です（出塁に足す必要はありません）。</p>
 
@@ -393,103 +398,172 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwuFKWO06Awsft9SuP_Oj5J
 const POSITIONS = ["ピッチャー","キャッチャー","ファースト","セカンド","サード","ショート","レフト","センター","ライト"];
 
 /* ===== スタンプの閾値（ここの数字だけ変えれば調整できます） ===== */
+/* ===== スタンプの設定（ここの数字・名前・絵文字を変えれば調整できます） =====
+   ver020：スタンプは「上限なし」。名前付きは各カテゴリ4つまでで、
+   5つ目以降は step の間隔で自動生成される（名前は autoFmt の {n} に数字が入る）。
+     tiers   … 名前付きスタンプ（4つまで。n＝達成に必要な数）
+     step    … 5つ目以降を作る間隔（0 または未指定＝自動生成なし＝ここで打ち止め）
+     autoFmt … 自動生成分の名前。{n} が数字に置きかわる（例："安打{n}本"）
+     autoEmoji … 自動生成分の絵文字
+   画面には「達成済みのスタンプ＋次の2個」だけが出る（未達成を全部並べない）。 */
 const STAMPS = {
   batting: { label:"打撃スタンプ（通算安打）", metric:"anda", unit:"本",
     grad:"linear-gradient(135deg,#ff8a00,#ff5e62)",
+    step:10, autoFmt:"安打{n}本", autoEmoji:"🏏",
     tiers:[
       {name:"初ヒット記念", emoji:"🎉", n:1},
       {name:"ヒットマスター", emoji:"⭐", n:5},
       {name:"ヒットの達人", emoji:"🔥", n:10},
       {name:"ヒットキング", emoji:"👑", n:20}
     ]},
+  /* ===== ver020：ホームラン ===== */
+  homerun: { label:"ホームランスタンプ（通算本塁打）", metric:"hr", unit:"本",
+    grad:"linear-gradient(135deg,#f83600,#f9d423)",
+    step:2, autoFmt:"ホームラン{n}本", autoEmoji:"💫",
+    tiers:[
+      {name:"初ホームラン", emoji:"🚀", n:1},
+      {name:"ホームラン2本", emoji:"✨", n:2},
+      {name:"ホームラン3本", emoji:"🌟", n:3},
+      {name:"ホームランバッター", emoji:"💥", n:5}
+    ]},
   onbase: { label:"出塁スタンプ（通算出塁）", metric:"shutsurui", unit:"回",
     grad:"linear-gradient(135deg,#11998e,#38ef7d)",
+    step:10, autoFmt:"出塁{n}回", autoEmoji:"👟",
     tiers:[
       {name:"初出塁", emoji:"👟", n:1},
       {name:"チャンスメーカー", emoji:"🚀", n:10},
-      {name:"塁の主", emoji:"🏰", n:20}
+      {name:"塁の主", emoji:"🏰", n:20},
+      {name:"出塁マスター", emoji:"🎓", n:30}
     ]},
   /* ===== ver016：追加スタンプ（打点・盗塁・代打・得点・打席） ===== */
   rbi: { label:"打点スタンプ（通算打点）", metric:"daten", unit:"点",
     grad:"linear-gradient(135deg,#fc6076,#ff9a44)",
+    step:10, autoFmt:"打点{n}点", autoEmoji:"💣",
     tiers:[
       {name:"初打点", emoji:"💥", n:1},
       {name:"ポイントゲッター", emoji:"🎯", n:5},
-      {name:"打点マシン", emoji:"💣", n:10}
-    ]},
-  steal: { label:"盗塁スタンプ（通算盗塁）", metric:"tourui", unit:"個",
-    grad:"linear-gradient(135deg,#36d1dc,#5b86e5)",
-    tiers:[
-      {name:"初盗塁", emoji:"💨", n:1},
-      {name:"スピードスター", emoji:"⚡", n:5},
-      {name:"韋駄天", emoji:"🌪️", n:10}
-    ]},
-  pinch: { label:"代打スタンプ（通算代打）", metric:"daida", unit:"回",
-    grad:"linear-gradient(135deg,#ee0979,#ff6a00)",
-    tiers:[
-      {name:"初代打", emoji:"🦸", n:1},
-      {name:"たのめる代打", emoji:"🤜", n:3},
-      {name:"代打の切り札", emoji:"🃏", n:5}
+      {name:"打点マシン", emoji:"💣", n:10},
+      {name:"打点キング", emoji:"👑", n:20}
     ]},
   run: { label:"得点スタンプ（通算得点）", metric:"tokuten", unit:"点",
     grad:"linear-gradient(135deg,#f7971e,#ffd200)",
+    step:10, autoFmt:"得点{n}点", autoEmoji:"🏠",
     tiers:[
       {name:"初得点", emoji:"🏃", n:1},
       {name:"ホームの常連", emoji:"🏠", n:5},
-      {name:"得点王への道", emoji:"🥇", n:10}
+      {name:"得点王への道", emoji:"🥇", n:10},
+      {name:"得点王", emoji:"👑", n:20}
+    ]},
+  steal: { label:"盗塁スタンプ（通算盗塁）", metric:"tourui", unit:"個",
+    grad:"linear-gradient(135deg,#36d1dc,#5b86e5)",
+    step:5, autoFmt:"盗塁{n}個", autoEmoji:"💨",
+    tiers:[
+      {name:"初盗塁", emoji:"💨", n:1},
+      {name:"スピードスター", emoji:"⚡", n:5},
+      {name:"韋駄天", emoji:"🌪️", n:10},
+      {name:"盗塁王", emoji:"👑", n:20}
     ]},
   atbat: { label:"打席スタンプ（通算打席）", metric:"daseki", unit:"打席",
     grad:"linear-gradient(135deg,#a18cd1,#fbc2eb)",
+    step:10, autoFmt:"{n}打席", autoEmoji:"🌳",
     tiers:[
       {name:"デビュー", emoji:"🌱", n:1},
       {name:"経験を積んだ", emoji:"🌿", n:10},
       {name:"打席のベテラン", emoji:"🌳", n:20},
       {name:"レジェンド", emoji:"🏆", n:30}
     ]},
-  /* ===== ver019：追加スタンプ（四球・振り逃げ・出場試合数・守備位置の種類・連続記録） ===== */
+  pinch: { label:"代打スタンプ（通算代打）", metric:"daida", unit:"回",
+    grad:"linear-gradient(135deg,#ee0979,#ff6a00)",
+    step:5, autoFmt:"代打{n}回", autoEmoji:"🃏",
+    tiers:[
+      {name:"初代打", emoji:"🦸", n:1},
+      {name:"たのめる代打", emoji:"🤜", n:3},
+      {name:"代打の切り札", emoji:"🃏", n:5},
+      {name:"代打の神様", emoji:"😇", n:10}
+    ]},
+  /* ===== ver019：四球・振り逃げ・出場・守備・連続 ===== */
   walk: { label:"四球スタンプ（通算四球）", metric:"bb", unit:"回",
     grad:"linear-gradient(135deg,#43cea2,#185a9d)",
+    step:5, autoFmt:"四球{n}回", autoEmoji:"🎫",
     tiers:[
       {name:"初四球", emoji:"🎫", n:1},
       {name:"選球眼", emoji:"👀", n:3},
       {name:"ボールは振らない", emoji:"🧘", n:5},
       {name:"四球マスター", emoji:"🎓", n:10}
     ]},
+  /* ===== ver020：死球（痛くてもがんばったことを称える） ===== */
+  hbp: { label:"死球スタンプ（通算死球）", metric:"hbp", unit:"回",
+    grad:"linear-gradient(135deg,#c94b4b,#4b134f)",
+    step:2, autoFmt:"死球{n}回", autoEmoji:"🛡️",
+    tiers:[
+      {name:"痛くても平気", emoji:"🩹", n:1},
+      {name:"ガッツあるぞ", emoji:"💪", n:2},
+      {name:"鉄の心", emoji:"🛡️", n:3},
+      {name:"不屈のバッター", emoji:"🦾", n:5}
+    ]},
   furinige: { label:"振り逃げスタンプ（通算振り逃げ）", metric:"furinige", unit:"回",
     grad:"linear-gradient(135deg,#f7b733,#fc4a1a)",
+    step:5, autoFmt:"振り逃げ{n}回", autoEmoji:"🥷",
     tiers:[
       {name:"初振り逃げ", emoji:"🏃‍♂️", n:1},
       {name:"あきらめない走塁", emoji:"🔥", n:3},
-      {name:"振り逃げの達人", emoji:"🥷", n:5}
+      {name:"振り逃げの達人", emoji:"🥷", n:5},
+      {name:"振り逃げの神様", emoji:"😇", n:10}
     ]},
   attend: { label:"出場スタンプ（通算出場試合数）", metric:"gameCount", unit:"試合",
     grad:"linear-gradient(135deg,#4facfe,#00f2fe)",
+    step:5, autoFmt:"出場{n}試合", autoEmoji:"🎖️",
     tiers:[
       {name:"はじめての試合", emoji:"🎽", n:1},
       {name:"3試合出場", emoji:"👍", n:3},
       {name:"5試合出場", emoji:"💪", n:5},
       {name:"10試合出場", emoji:"🎖️", n:10}
     ]},
+  /* 守備だけは上限あり（全ポジション制覇で完結。step なし＝自動生成しない） */
   glove: { label:"守備スタンプ（守ったポジションの数）", metric:"posKinds", unit:"種類",
     grad:"linear-gradient(135deg,#a8e063,#56ab2f)",
     tiers:[
       {name:"2ポジション", emoji:"🧤", n:2},
       {name:"3ポジション", emoji:"🛡️", n:3},
-      {name:"5ポジション", emoji:"🌈", n:5}
+      {name:"5ポジション", emoji:"🌈", n:5},
+      {name:"全ポジション制覇", emoji:"👑", n:7}
     ]},
-  hitrun: { label:"連続ヒットスタンプ（出場した試合で連続）", metric:"hitStreak", unit:"試合連続",
+  hitrun: { label:"連続ヒットスタンプ（出場した試合で連続）", metric:"hitStreak", unit:"試合",
     grad:"linear-gradient(135deg,#ff8a00,#ff5e62)",
+    step:1, autoFmt:"{n}試合連続ヒット", autoEmoji:"🔥",
     tiers:[
       {name:"2試合連続ヒット", emoji:"⚾", n:2},
-      {name:"3試合連続ヒット", emoji:"🌟", n:3}
+      {name:"3試合連続ヒット", emoji:"🌟", n:3},
+      {name:"止まらない打棒", emoji:"🔥", n:4},
+      {name:"ヒットの鬼", emoji:"👹", n:5}
     ]},
-  reachrun: { label:"連続出塁スタンプ（出場した試合で連続）", metric:"reachStreak", unit:"試合連続",
+  reachrun: { label:"連続出塁スタンプ（出場した試合で連続）", metric:"reachStreak", unit:"試合",
     grad:"linear-gradient(135deg,#11998e,#38ef7d)",
+    step:1, autoFmt:"{n}試合連続出塁", autoEmoji:"✨",
     tiers:[
       {name:"2試合連続出塁", emoji:"👟", n:2},
-      {name:"3試合連続出塁", emoji:"✨", n:3}
+      {name:"3試合連続出塁", emoji:"✨", n:3},
+      {name:"塁に出続ける", emoji:"🧱", n:4},
+      {name:"出塁の鉄人", emoji:"🦿", n:5}
     ]}
 };
+
+/* ver020：あるカテゴリで「画面に出すスタンプ」を作る
+   ＝達成済みぶん（名前付き＋自動生成）＋まだ達成していない次の2個 */
+function stampTiers(g, val){
+  const list = (g.tiers || []).slice();
+  const step = g.step || 0;
+  if(step > 0){
+    const base = list.length ? list[list.length - 1].n : 0;   // 最後の名前付きの数
+    const limit = Math.max(val, base) + step * 2;             // 達成ぶん＋次の2個まで作る
+    for(let n = base + step; n <= limit; n += step){
+      list.push({ name:String(g.autoFmt || "{n}").replace("{n}", n), emoji:g.autoEmoji || "🏅", n:n, auto:true });
+    }
+  }
+  const done = list.filter(x => val >= x.n);
+  const next = list.filter(x => val < x.n).slice(0, 2);
+  return { show:done.concat(next), doneCount:done.length };
+}
 
 let CHILDREN=[], GAME_DATES=[], YEARS=[], CUR_YEAR=null;
 /* ver019：区分・試合種別は全タブ共通の1組で持つ（タブを切り替えても維持される）
@@ -567,6 +641,7 @@ document.getElementById("submit").onclick=async()=>{
     bb:+document.getElementById("bb").value,            // ver019：四球
     hbp:+document.getElementById("hbp").value,          // ver019：死球
     furinige:+document.getElementById("furinige").value,// ver019：振り逃げ
+    hr:+document.getElementById("hr").value,            // ver020：ホームラン
     positions:Array.from(selPositions).join("・"),
     start:selStart,
     play:selPlay
@@ -577,7 +652,7 @@ document.getElementById("submit").onclick=async()=>{
     clearMem();
     toast(editingTeeballTs?"成績を修正しました ✓":"記録しました ✓");
     // 入力欄リセット
-    ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige"].forEach(id=>document.getElementById(id).value=0);
+    ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige","hr"].forEach(id=>document.getElementById(id).value=0);
     selPositions.clear();document.querySelectorAll("#posChips .chip").forEach(c=>c.classList.remove("on"));
     document.querySelectorAll("#segPlay .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selPlay="";
     cancelTeeballEdit();
@@ -592,7 +667,7 @@ function cancelTeeballEdit(){
   document.getElementById("submit").textContent="＋ この選手の成績を記録";
 }
 document.getElementById("tbEditCancel").onclick=()=>{
-  ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige"].forEach(id=>document.getElementById(id).value=0);
+  ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige","hr"].forEach(id=>document.getElementById(id).value=0);
   selPositions.clear();document.querySelectorAll("#posChips .chip").forEach(c=>c.classList.remove("on"));
   document.querySelectorAll("#segStart .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selStart="スタメン";
   document.querySelectorAll("#segPlay .seg-btn").forEach((x,i)=>x.classList.toggle("on",i===0));selPlay="";
@@ -610,6 +685,7 @@ function editTeeball(ts){
   document.getElementById("tourui").value=r.tourui||0;   // ver016：盗塁
   document.getElementById("bb").value=r.bb||0;document.getElementById("hbp").value=r.hbp||0;
   document.getElementById("furinige").value=r.furinige||0;   // ver019：四球・死球・振り逃げ
+  document.getElementById("hr").value=r.hr||0;   // ver020：ホームラン
   selPositions.clear();
   const ps=String(r.positions||"").split("・").filter(x=>x);
   document.querySelectorAll("#posChips .chip").forEach(c=>{const on=ps.indexOf(c.textContent)>=0;c.classList.toggle("on",on);if(on)selPositions.add(c.textContent);});
@@ -700,9 +776,9 @@ function renderCheck(rows){
     +((gBunrui==="all"&&gKind==="all")?'この年度の入力データはまだありません。'
       :'この絞り込み（'+BUNRUI_LABEL[gBunrui]+'／'+KIND_LABEL[gKind]+'）に当てはまる入力データはありません。')+'</div>';return;}
   /* PC用：表（従来どおり。ver019で四球・死球・振り逃げの列を追加） */
-  let h='<div class="check-pc"><table><thead><tr><th>試合日</th><th>児童</th><th>打席</th><th>安打</th><th>打点</th><th>得点</th><th>出塁</th><th>代打</th><th>盗塁</th><th>四球</th><th>死球</th><th>振逃</th><th>守備</th><th>出場</th><th>評価</th><th>操作</th></tr></thead><tbody>';
+  let h='<div class="check-pc"><table><thead><tr><th>試合日</th><th>児童</th><th>打席</th><th>安打</th><th>打点</th><th>得点</th><th>出塁</th><th>代打</th><th>盗塁</th><th>四球</th><th>死球</th><th>振逃</th><th>本塁打</th><th>守備</th><th>出場</th><th>評価</th><th>操作</th></tr></thead><tbody>';
   rows.forEach(r=>{
-    h+=`<tr><td style="white-space:nowrap">${mmdd(r.date)}</td><td>${r.child}</td><td>${r.daseki}</td><td>${r.anda}</td><td>${r.daten}</td><td>${r.tokuten}</td><td>${r.shutsurui}</td><td>${r.daida}</td><td>${r.tourui||0}</td><td>${r.bb||0}</td><td>${r.hbp||0}</td><td>${r.furinige||0}</td><td style="font-size:.72rem">${r.positions||""}</td><td style="font-size:.72rem">${r.start||""}</td><td>${r.play||""}</td>`+
+    h+=`<tr><td style="white-space:nowrap">${mmdd(r.date)}</td><td>${r.child}</td><td>${r.daseki}</td><td>${r.anda}</td><td>${r.daten}</td><td>${r.tokuten}</td><td>${r.shutsurui}</td><td>${r.daida}</td><td>${r.tourui||0}</td><td>${r.bb||0}</td><td>${r.hbp||0}</td><td>${r.furinige||0}</td><td>${r.hr||0}</td><td style="font-size:.72rem">${r.positions||""}</td><td style="font-size:.72rem">${r.start||""}</td><td>${r.play||""}</td>`+
       `<td><div style="display:flex;flex-direction:column;gap:5px;align-items:stretch"><button class="rowbtn edit" style="margin:0" onclick="editTeeball('${r.ts}')">修正</button><button class="rowbtn del" style="margin:0" onclick="delTeeball('${r.ts}')">削除</button></div></td></tr>`;
   });
   h+='</tbody></table></div>';
@@ -715,7 +791,7 @@ function renderCheck(rows){
       +'<div class="chk-items">'
       +it("打席",r.daseki||0)+it("安打",r.anda||0)+it("打点",r.daten||0)+it("得点",r.tokuten||0)
       +it("出塁",r.shutsurui||0)+it("代打",r.daida||0)+it("盗塁",r.tourui||0)
-      +it("四球",r.bb||0)+it("死球",r.hbp||0)+it("振り逃げ",r.furinige||0)
+      +it("四球",r.bb||0)+it("死球",r.hbp||0)+it("振り逃げ",r.furinige||0)+it("本塁打",r.hr||0)
       +'<span class="chk-item wide">守備<b>'+esc(r.positions||"—")+'</b></span>'
       +'<span class="chk-item">出場<b>'+esc(r.start||"—")+'</b></span>'
       +'<span class="chk-item">評価<b>'+esc(r.play||"—")+'</b></span>'
@@ -1160,13 +1236,14 @@ async function loadStamp(fresh){
     filterRecords(d.teeball||[]).forEach(r=>{   // ver019：共通フィルタを適用
       const c=r.child;if(!c)return;
       if(!STAMP_TOTALS[c])STAMP_TOTALS[c]={daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0,
-        bb:0,hbp:0,furinige:0,gameCount:0,posKinds:0,hitStreak:0,reachStreak:0};   // ver019：追加分＋派生値
+        bb:0,hbp:0,furinige:0,hr:0,gameCount:0,posKinds:0,hitStreak:0,reachStreak:0};   // ver019/020：追加分＋派生値
       STAMP_TOTALS[c].daseki+=Number(r.daseki)||0;STAMP_TOTALS[c].anda+=Number(r.anda)||0;
       STAMP_TOTALS[c].daten+=Number(r.daten)||0;STAMP_TOTALS[c].tokuten+=Number(r.tokuten)||0;
       STAMP_TOTALS[c].shutsurui+=Number(r.shutsurui)||0;STAMP_TOTALS[c].daida+=Number(r.daida)||0;
       STAMP_TOTALS[c].tourui+=Number(r.tourui)||0;   // ver016：盗塁（旧データは0）
       STAMP_TOTALS[c].bb+=Number(r.bb)||0;STAMP_TOTALS[c].hbp+=Number(r.hbp)||0;
       STAMP_TOTALS[c].furinige+=Number(r.furinige)||0;   // ver019：四球・死球・振り逃げ（旧データは0）
+      STAMP_TOTALS[c].hr+=Number(r.hr)||0;   // ver020：ホームラン（旧データは0）
       /* ver019：守備位置の種類（「・」区切りを分解して重複なしで数える） */
       if(!posSet[c])posSet[c]=new Set();
       String(r.positions||"").split("・").forEach(p=>{if(p)posSet[c].add(p);});
@@ -1186,8 +1263,8 @@ async function loadStamp(fresh){
       /* ver017：成長グラフ用＝試合日ごとの合算（日付昇順。同じ日は1試合として合算） */
       const games=[];let cur=null;
       recs.forEach(r=>{
-        if(!cur||cur.date!==r.date){cur={date:r.date,daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0,bb:0,hbp:0,furinige:0};games.push(cur);}
-        ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige"].forEach(k=>cur[k]+=Number(r[k])||0);
+        if(!cur||cur.date!==r.date){cur={date:r.date,daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0,bb:0,hbp:0,furinige:0,hr:0};games.push(cur);}
+        ["daseki","anda","daten","tokuten","shutsurui","daida","tourui","bb","hbp","furinige","hr"].forEach(k=>cur[k]+=Number(r[k])||0);
       });
       STAMP_GAMES[c]=games;
       /* ver019：出場試合数／守備位置の種類／連続記録（出場した試合だけを日付順に見るので、欠席で連続は途切れない） */
@@ -1207,18 +1284,18 @@ async function loadStamp(fresh){
 function renderStamps(){
   const child=document.getElementById("stampChild").value;
   const t=STAMP_TOTALS[child]||{daseki:0,anda:0,daten:0,tokuten:0,shutsurui:0,daida:0,tourui:0,
-    bb:0,hbp:0,furinige:0,gameCount:0,posKinds:0,hitStreak:0,reachStreak:0};   // ver019
+    bb:0,hbp:0,furinige:0,hr:0,gameCount:0,posKinds:0,hitStreak:0,reachStreak:0};   // ver019/020
   const f=STAMP_FIRSTS[child]||{};
-  // 獲得数カウント
-  let got=0,total=0;
-  Object.keys(STAMPS).forEach(g=>{STAMPS[g].tiers.forEach(ti=>{total++;if((t[STAMPS[g].metric]||0)>=ti.n)got++;});});
+  // 獲得数カウント（ver020：上限なしなので「集めた数」だけを数える）
+  let got=0;
+  Object.keys(STAMPS).forEach(g=>{got+=stampTiers(STAMPS[g],t[STAMPS[g].metric]||0).doneCount;});
   let h='<div class="stamp-head"><div class="sh-name">'+esc(child||"—")+'</div>'
     +'<div class="sh-sub">通算安打 '+t.anda+'本 ・ 通算出塁 '+t.shutsurui+'回 ・ '+filterLabel()+'</div>'   // ver019：絞り込み状態を表示
-    +'<div class="sh-got">🏅 獲得スタンプ '+got+' / '+total+'</div></div>';
+    +'<div class="sh-got">🏅 集めたスタンプ '+got+'こ</div></div>';   // ver020：上限なしなので分母は出さない
   // 通算成績
   h+='<div class="stamp-gtitle">📊 通算成績<span class="bar"></span></div>';
   h+='<div class="stat-line">打席 <b>'+t.daseki+'</b>　安打 <b>'+t.anda+'</b>　打点 <b>'+t.daten+'</b>　得点 <b>'+t.tokuten+'</b>　出塁 <b>'+t.shutsurui+'</b>　代打 <b>'+t.daida+'</b>　盗塁 <b>'+(t.tourui||0)+'</b>'
-    +'　四球 <b>'+(t.bb||0)+'</b>　死球 <b>'+(t.hbp||0)+'</b>　振り逃げ <b>'+(t.furinige||0)+'</b>　出場 <b>'+(t.gameCount||0)+'</b>試合</div>';   // ver019
+    +'　四球 <b>'+(t.bb||0)+'</b>　死球 <b>'+(t.hbp||0)+'</b>　振り逃げ <b>'+(t.furinige||0)+'</b>　本塁打 <b>'+(t.hr||0)+'</b>　出場 <b>'+(t.gameCount||0)+'</b>試合</div>';   // ver019/020
   // ver017：せいちょうグラフ（累積の線グラフ・項目切り替え）
   h+='<div class="stamp-gtitle">📈 せいちょうグラフ<span class="bar"></span></div>';
   const games=STAMP_GAMES[child]||[];
@@ -1242,8 +1319,12 @@ function renderStamps(){
   // スタンプ
   Object.keys(STAMPS).forEach(gkey=>{
     const g=STAMPS[gkey];const val=t[g.metric]||0;
-    h+='<div class="stamp-gtitle">'+g.label+'<span class="bar"></span></div><div class="stamp-grid">';
-    g.tiers.forEach(ti=>{
+    /* ver020：達成済み＋次の2個だけを出す（上限なしなので未達成を全部並べない） */
+    const st=stampTiers(g,val);
+    h+='<div class="stamp-gtitle">'+g.label
+      +(st.doneCount?'<span class="g-count">'+st.doneCount+'こ</span>':'')
+      +'<span class="bar"></span></div><div class="stamp-grid">';
+    st.show.forEach(ti=>{
       const on=val>=ti.n;
       const rest=ti.n-val;
       h+='<div class="stamp '+(on?'on':'off')+'"'+(on?' style="background:'+g.grad+'"':'')+'>'
